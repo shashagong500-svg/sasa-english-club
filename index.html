@@ -358,16 +358,18 @@ function bestEnglishVoice() {
 
 function speakYd(text, rate, onDone) {
   var token = ++_speakToken;
-  // Youdao's dictionary endpoint is reliable for individual words, but it
-  // returns HTTP 500 for many valid phrases and sentences. Start system TTS
-  // synchronously for non-words so mobile browsers retain the tap gesture.
-  if (!isDictionaryWord(text)) {
-    speakSyn(text, rate, onDone, token);
-    return;
-  }
   try {
-    var a = new Audio("https://dict.youdao.com/dictvoice?audio=" + encodeURIComponent(text) + "&type=2");
+    // Use dictionary audio for words and general TTS audio for phrases and
+    // sentences. Reusing one media element keeps continuous play unlocked on
+    // iOS Safari and embedded mobile browsers after the first user tap.
+    var audioUrl = isDictionaryWord(text)
+      ? "https://dict.youdao.com/dictvoice?audio=" + encodeURIComponent(text) + "&type=2"
+      : "https://fanyi.baidu.com/gettts?lan=en&text=" + encodeURIComponent(text) + "&spd=5&source=web";
+    var a = _ttsAudio || new Audio();
     _ttsAudio = a;
+    a.preload = "auto";
+    a.playsInline = true;
+    a.src = audioUrl;
     if (rate && rate !== 1) { try { a.playbackRate = rate; } catch(e) {} }
     var finished = false;
     var fallbackTimer = setTimeout(fallback, 4000);
@@ -383,7 +385,6 @@ function speakYd(text, rate, onDone) {
       if (finished || token !== _speakToken) return;
       finished = true;
       clearTimeout(fallbackTimer);
-      if (_ttsAudio === a) _ttsAudio = null;
       if (onDone) onDone();
     }
     a.onplaying = function() { clearTimeout(fallbackTimer); };
