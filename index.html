@@ -222,7 +222,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans G
 </div>
 </div>
 
-<script src="audio/audio-map.js?v=20260810-2"></script>
+<script src="audio-neural/audio-map.js?v=ava-neural-20260810-v1"></script>
 <script>
 // ===== Core State =====
 var S = {page: "home", grade: "3", tbView: null, unitDetail: null, wcState: null, ppState: null, hwUnit: null, testMod: null, gameState: null, recState: null};
@@ -262,13 +262,20 @@ var DB = {
     if (!this.d.hwProgress) this.d.hwProgress = {};
     if (!this.d.testScores) this.d.testScores = {};
     if (!this.d.today) this.d.today = {};
+    if (!this.d.settings) this.d.settings = {grade: "3", voiceRate: 1.0, autoPlay: true};
+    if (this.d.settings.audioVoiceVersion !== 2) {
+      var oldRate = this.d.settings.voiceRate || 0.8;
+      this.d.settings.voiceRate = oldRate <= 0.65 ? 0.8 : (oldRate <= 0.85 ? 1.0 : 1.15);
+      this.d.settings.audioVoiceVersion = 2;
+      this.save();
+    }
   },
   save: function() {
     try { localStorage.setItem("sasa_eng_v3", JSON.stringify(this.d)); } catch(e) {}
   },
   def: function() {
     return {
-      settings: {grade: "3", voiceRate: 0.8, autoPlay: true},
+      settings: {grade: "3", voiceRate: 1.0, autoPlay: true, audioVoiceVersion: 2},
       words: {},    // {word: {learned, mastered, errCount}}
       sentences: {},
       grammar: {},
@@ -379,7 +386,7 @@ function speakYd(text, rate, onDone) {
     _ttsAudio = a;
     a.preload = "auto";
     a.playsInline = true;
-    try { a.playbackRate = rate || (DB.d.settings.voiceRate || 0.8); } catch(e) {}
+    try { a.playbackRate = rate || (DB.d.settings.voiceRate || 1.0); } catch(e) {}
     var finished = false;
     var fallbackTimer = null;
     var attempt = 0;
@@ -440,7 +447,7 @@ function speakSyn(text, rate, onDone, token) {
   try { speechSynthesis.resume(); } catch(e) {}
   var u = new SpeechSynthesisUtterance(text);
   u.lang = "en-US";
-  u.rate = rate || DB.d.settings.voiceRate || 0.8;
+  u.rate = rate || DB.d.settings.voiceRate || 1.0;
   u.pitch = 1;
   u.volume = 1;
   var voice = bestEnglishVoice();
@@ -1032,7 +1039,7 @@ function playAllText() {
       return;
     }
     var sent = normalizeSentence(text[i]);
-    speakYd(sent.en, DB.d.settings.voiceRate || 0.8, function() {
+    speakYd(sent.en, DB.d.settings.voiceRate || 1.0, function() {
       if (token !== _playAllToken) return;
       markListen(i);
       i++;
@@ -1068,7 +1075,7 @@ function playForRec() {
   if (!sel) return;
   var idx = parseInt(sel.value);
   var sent = normalizeSentence(S.unitDetail.unit.text[idx]);
-  if (sent) speak(sent.en, 0.7);
+  if (sent) speak(sent.en, 0.9);
 }
 
 function startRec() {
@@ -1158,7 +1165,7 @@ function renderWordChallenge() {
     h += '<div class="card">';
     h += '<div class="card-t">👂 听力填词</div>';
     h += '<p style="text-align:center;font-size:14px;color:var(--tl);margin:10px 0">点击播放，写出你听到的单词</p>';
-    h += '<div style="text-align:center;margin:16px 0"><button class="btn btn-p" style="font-size:18px;padding:14px 30px" onclick="speak(\'' + w.e.replace(/'/g, "\\'") + '\',0.7)">🔊 播放</button></div>';
+    h += '<div style="text-align:center;margin:16px 0"><button class="btn btn-p" style="font-size:18px;padding:14px 30px" onclick="speak(\'' + w.e.replace(/'/g, "\\'") + '\',0.9)">🔊 播放</button></div>';
     h += '<input class="input" id="wcListenInput" placeholder="请输入你听到的单词" autocomplete="off" autocapitalize="none" onkeydown="if(event.key===\'Enter\')wcSubmitListen()">';
     h += '<button class="btn btn-p btn-blk" style="margin-top:10px" onclick="wcSubmitListen()">提交答案</button>';
     h += '<div id="wcAns"></div>';
@@ -1180,7 +1187,7 @@ function renderWordChallenge() {
     // Spelling
     h += '<div class="card">';
     h += '<div class="card-t">✏️ 拼写训练</div>';
-    h += '<div style="text-align:center;margin:10px 0"><button class="btn btn-s" onclick="speak(\'' + w.e.replace(/'/g, "\\'") + '\',0.7)">🔊 听一听</button></div>';
+    h += '<div style="text-align:center;margin:10px 0"><button class="btn btn-s" onclick="speak(\'' + w.e.replace(/'/g, "\\'") + '\',0.9)">🔊 听一听</button></div>';
     h += '<div style="text-align:center;font-size:14px;color:var(--tl);margin:8px 0">' + (w.c || "") + '</div>';
     h += renderSyllables(w);
     h += '<input class="input" id="wcInput" placeholder="输入单词拼写..." style="text-align:center;font-size:18px;text-transform:lowercase">';
@@ -1192,11 +1199,11 @@ function renderWordChallenge() {
     var ex = w.x || w.e;
     h += '<div class="card">';
     h += '<div class="card-t">🗣️ 例句跟读</div>';
-    h += '<div style="text-align:center;margin:10px 0"><button class="btn btn-s" onclick="speak(\'' + ex.replace(/'/g, "\\'") + '\',0.7)">🔊 听例句</button></div>';
+    h += '<div style="text-align:center;margin:10px 0"><button class="btn btn-s" onclick="speak(\'' + ex.replace(/'/g, "\\'") + '\',0.9)">🔊 听例句</button></div>';
     h += '<div style="background:var(--pl);border-radius:10px;padding:14px;text-align:center;margin:10px 0">';
     h += '<div style="font-size:16px;font-weight:500">' + ex + '</div>';
     h += '<div class="example-actions">';
-    h += '<button class="btn btn-s" onclick="event.stopPropagation();speak(\'' + ex.replace(/'/g, "\\'") + '\',0.7)">🔊 例句发音</button>';
+    h += '<button class="btn btn-s" onclick="event.stopPropagation();speak(\'' + ex.replace(/'/g, "\\'") + '\',0.9)">🔊 例句发音</button>';
     if (w.xc) {
       h += '<button class="btn btn-l" onclick="event.stopPropagation();toggleCardTranslation(\'wcExampleZh\')">中译</button>';
       h += '<div class="example-translation" id="wcExampleZh" style="display:none">' + w.xc + '</div>';
@@ -1438,12 +1445,12 @@ function ppSelect(el, word, base) {
   var sentEl = document.getElementById("ppSentence");
   if (target) target.style.display = "block";
   if (sentEl) sentEl.textContent = sentence;
-  speak(sentence, 0.7);
+  speak(sentence, 0.9);
 }
 
 function ppPlay() {
   var sentEl = document.getElementById("ppSentence");
-  if (sentEl) speak(sentEl.textContent, 0.7);
+  if (sentEl) speak(sentEl.textContent, 0.9);
 }
 
 function ppRec() {
@@ -1662,10 +1669,10 @@ function renderModuleTest() {
   h += '<div class="qt">' + (typeLabel[q.type] || "题目") + '</div>';
 
   if (q.isListen) {
-    h += '<div style="text-align:center;margin:10px 0"><button class="btn btn-s" onclick="speak(\'' + q.q.replace(/'/g, "\\'") + '\',0.7)">🔊 听音选义</button></div>';
+    h += '<div style="text-align:center;margin:10px 0"><button class="btn btn-s" onclick="speak(\'' + q.q.replace(/'/g, "\\'") + '\',0.9)">🔊 听音选义</button></div>';
   } else if (q.isRead) {
     h += '<div class="qc">' + q.q + '</div>';
-    h += '<div style="text-align:center;margin:8px 0"><button class="btn btn-s" onclick="speak(\'' + q.q.replace(/'/g, "\\'") + '\',0.7)">🔊 播放</button></div>';
+    h += '<div style="text-align:center;margin:8px 0"><button class="btn btn-s" onclick="speak(\'' + q.q.replace(/'/g, "\\'") + '\',0.9)">🔊 播放</button></div>';
     h += '<button class="btn btn-p btn-blk" id="testRecBtn" onclick="testRec()">🎤 朗读录音</button>';
     h += '<div id="testAns"></div>';
     h += '</div>';
@@ -1979,7 +1986,7 @@ function renderCardGame() {
     h += '<div class="example-box">';
     h += '<div class="example-text">' + w.x + '</div>';
     h += '<div class="example-actions">';
-    h += '<button class="btn btn-s" onclick="event.stopPropagation();speak(\'' + w.x.replace(/'/g, "\\'") + '\',0.75)">🔊 例句发音</button>';
+    h += '<button class="btn btn-s" onclick="event.stopPropagation();speak(\'' + w.x.replace(/'/g, "\\'") + '\',0.9)">🔊 例句发音</button>';
     if (w.xc) {
       h += '<button class="btn btn-l" onclick="event.stopPropagation();toggleCardTranslation(\'' + exId + '\')">中译</button>';
       h += '<div class="example-translation" id="' + exId + '" style="display:none">' + w.xc + '</div>';
@@ -2057,7 +2064,7 @@ function renderSpellGame() {
 
   h += '<div class="card">';
   h += '<div class="card-t">✏️ 拼写训练</div>';
-  h += '<div style="text-align:center;margin:10px 0"><button class="btn btn-s" onclick="speak(\'' + w.e.replace(/'/g, "\\'") + '\',0.7)">🔊 听一听</button></div>';
+  h += '<div style="text-align:center;margin:10px 0"><button class="btn btn-s" onclick="speak(\'' + w.e.replace(/'/g, "\\'") + '\',0.9)">🔊 听一听</button></div>';
   h += '<div style="text-align:center;font-size:14px;color:var(--tl);margin:8px 0">' + (w.c || "") + '</div>';
   h += renderSyllables(w);
   h += '<input class="input" id="sgInput" placeholder="输入单词拼写..." style="text-align:center;font-size:18px;text-transform:lowercase" onkeydown="if(event.key===\'Enter\')submitSpellGame()">';
@@ -2105,7 +2112,7 @@ function startListenGame() {
   // Auto play first
   setTimeout(function() {
     var w = S.gameState.words[0];
-    if (w) speak(w.e, 0.7);
+    if (w) speak(w.e, 0.9);
   }, 500);
 }
 
@@ -2138,7 +2145,7 @@ function renderListenGame() {
   h += '<div class="card">';
   h += '<div class="card-t">👂 听力填词</div>';
   h += '<p style="text-align:center;font-size:14px;color:var(--tl);margin:10px 0">先听发音，再写出你听到的英文单词</p>';
-  h += '<div style="text-align:center;margin:16px 0"><button class="btn btn-p" style="font-size:18px;padding:14px 30px" onclick="speak(\'' + w.e.replace(/'/g, "\\'") + '\',0.7)">🔊 播放</button></div>';
+  h += '<div style="text-align:center;margin:16px 0"><button class="btn btn-p" style="font-size:18px;padding:14px 30px" onclick="speak(\'' + w.e.replace(/'/g, "\\'") + '\',0.9)">🔊 播放</button></div>';
   h += '<input class="input" id="lgInput" placeholder="请输入你听到的单词" autocomplete="off" autocapitalize="none" onkeydown="if(event.key===\'Enter\')submitListenGame()">';
   h += '<button class="btn btn-p btn-blk" style="margin-top:10px" id="lgSubmit" onclick="submitListenGame()">提交答案</button>';
   h += '<div id="lgAns"></div>';
@@ -2188,7 +2195,7 @@ function nextListenGame() {
   render();
   setTimeout(function() {
     var gs = S.gameState;
-    if (gs && gs.words[gs.idx]) speak(gs.words[gs.idx].e, 0.7);
+    if (gs && gs.words[gs.idx]) speak(gs.words[gs.idx].e, 0.9);
   }, 300);
 }
 
@@ -2320,7 +2327,7 @@ function renderSpeakChallenge() {
   h += '<div style="font-size:18px;font-weight:600">' + (typeof sent === "string" ? sent : sent.en) + '</div>';
   if (typeof sent === "object" && sent.zh) h += '<div class="lang-zh" style="margin-top:6px">' + sent.zh + '</div>';
   h += '</div>';
-  h += '<div style="text-align:center;margin:10px 0"><button class="btn btn-s" onclick="speak(\'' + (typeof sent === "string" ? sent : sent.en).replace(/'/g, "\\'") + '\',0.7)">🔊 听一遍</button></div>';
+  h += '<div style="text-align:center;margin:10px 0"><button class="btn btn-s" onclick="speak(\'' + (typeof sent === "string" ? sent : sent.en).replace(/'/g, "\\'") + '\',0.9)">🔊 听一遍</button></div>';
   h += '<button class="btn btn-p btn-blk" id="scRecBtn" onclick="speakRec()">🎤 录音朗读</button>';
   h += '<div id="scAns"></div>';
   h += '</div>';
@@ -2386,7 +2393,7 @@ function renderReading() {
   if (zh) h += '<div class="lang-zh" style="margin-top:12px;font-size:14px">' + zh + '</div>';
   h += '</div>';
   h += '<div style="display:flex;gap:8px;margin-top:14px">';
-  h += '<button class="btn btn-s" style="flex:1" onclick="speak(\'' + en.replace(/'/g, "\\'") + '\',0.7)">🔊 点读</button>';
+  h += '<button class="btn btn-s" style="flex:1" onclick="speak(\'' + en.replace(/'/g, "\\'") + '\',0.9)">🔊 点读</button>';
   h += '<button class="btn btn-p" style="flex:1" onclick="S.gameState.idx++;render()">下一句 →</button>';
   h += '</div>';
   h += '</div>';
@@ -2448,9 +2455,9 @@ function renderMore() {
   h += '<div class="card-t">⚙️ 设置</div>';
   h += '<div class="rp-item"><span>语速</span></div>';
   h += '<div style="display:flex;gap:8px;margin:8px 0">';
-  var rates = [{v: 0.6, l: "慢"}, {v: 0.8, l: "正常"}, {v: 1.0, l: "快"}];
+  var rates = [{v: 0.8, l: "慢"}, {v: 1.0, l: "正常"}, {v: 1.15, l: "快"}];
   rates.forEach(function(r) {
-    var cur = DB.d.settings.voiceRate || 0.8;
+    var cur = DB.d.settings.voiceRate || 1.0;
     h += '<button class="opt-chip' + (Math.abs(cur - r.v) < 0.01 ? " sel" : "") + '" onclick="setRate(' + r.v + ')">' + r.l + '</button>';
   });
   h += '</div>';
