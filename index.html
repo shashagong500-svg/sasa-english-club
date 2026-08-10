@@ -222,6 +222,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans G
 </div>
 </div>
 
+<script src="audio/audio-map.js?v=20260810-2"></script>
 <script>
 // ===== Core State =====
 var S = {page: "home", grade: "3", tbView: null, unitDetail: null, wcState: null, ppState: null, hwUnit: null, testMod: null, gameState: null, recState: null};
@@ -322,7 +323,7 @@ function getGradeTB(g) { return TB2026[g] || TB[g] || []; }
 function findModule(g, mid) { var list = getGradeTB(g); for (var i = 0; i < list.length; i++) { if (list[i].mid == mid) return list[i]; } return null; }
 function findUnit(g, mid, uid) { var mod = findModule(g, mid); if (!mod || !mod.units) return null; for (var i = 0; i < mod.units.length; i++) { if (mod.units[i].uid == uid) return mod.units[i]; } return null; }
 
-// ===== TTS (mobile-first human voice: audio URL -> speechSynthesis) =====
+// ===== TTS (self-hosted audio -> remote audio -> speechSynthesis) =====
 var TTS_VOICES = [];
 var _ttsBusy = false;
 var _speakToken = 0;
@@ -347,6 +348,17 @@ function isDictionaryWord(text) {
   return /^[A-Za-z][A-Za-z'-]*$/.test((text || "").trim());
 }
 
+function audioSourcesFor(text) {
+  text = (text || "").trim();
+  var sources = [];
+  var local = (window.SASA_AUDIO_MAP || {})[text];
+  if (local) sources.push(local);
+  sources.push(isDictionaryWord(text)
+    ? "https://dict.youdao.com/dictvoice?audio=" + encodeURIComponent(text) + "&type=2"
+    : "https://fanyi.baidu.com/gettts?lan=en&text=" + encodeURIComponent(text) + "&spd=5&source=web");
+  return sources;
+}
+
 function bestEnglishVoice() {
   var voices = TTS_VOICES.filter(function(v) { return /^en([_-]|$)/i.test(v.lang || ""); });
   if (!voices.length) return null;
@@ -359,21 +371,19 @@ function bestEnglishVoice() {
 function speakYd(text, rate, onDone) {
   var token = ++_speakToken;
   try {
-    // Use dictionary audio for words and general TTS audio for phrases and
-    // sentences. Reusing one media element keeps continuous play unlocked on
-    // iOS Safari and embedded mobile browsers after the first user tap.
-    var audioUrl = isDictionaryWord(text)
-      ? "https://dict.youdao.com/dictvoice?audio=" + encodeURIComponent(text) + "&type=2"
-      : "https://fanyi.baidu.com/gettts?lan=en&text=" + encodeURIComponent(text) + "&spd=5&source=web";
+    // Known course content is served from this site. Remote audio and system
+    // speech remain fallbacks for dynamically generated practice sentences.
+    var audioUrls = audioSourcesFor(text);
+    var sourceIndex = 0;
     var a = _ttsAudio || new Audio();
     _ttsAudio = a;
     a.preload = "auto";
     a.playsInline = true;
-    a.src = audioUrl;
-    if (rate && rate !== 1) { try { a.playbackRate = rate; } catch(e) {} }
+    try { a.playbackRate = rate || (DB.d.settings.voiceRate || 0.8); } catch(e) {}
     var finished = false;
-    var fallbackTimer = setTimeout(fallback, 4000);
-    function fallback() {
+    var fallbackTimer = null;
+    var attempt = 0;
+    function fallbackToSystem() {
       if (finished || _ttsAudio !== a || token !== _speakToken) return;
       finished = true;
       clearTimeout(fallbackTimer);
@@ -381,17 +391,41 @@ function speakYd(text, rate, onDone) {
       if (_ttsAudio === a) _ttsAudio = null;
       speakSyn(text, rate, onDone, token);
     }
+    function tryNextSource() {
+      if (finished || _ttsAudio !== a || token !== _speakToken) return;
+      clearTimeout(fallbackTimer);
+      if (sourceIndex >= audioUrls.length) {
+        fallbackToSystem();
+        return;
+      }
+      var currentAttempt = ++attempt;
+      a.onplaying = function() {
+        if (currentAttempt === attempt) clearTimeout(fallbackTimer);
+      };
+      a.onended = done;
+      a.onerror = function() { failSource(currentAttempt); };
+      a.onstalled = function() { failSource(currentAttempt); };
+      a.src = audioUrls[sourceIndex++];
+      try { a.load(); } catch(e) {}
+      fallbackTimer = setTimeout(function() { failSource(currentAttempt); }, 5000);
+      var playPromise = a.play();
+      if (playPromise && playPromise.catch) {
+        playPromise.catch(function() { failSource(currentAttempt); });
+      }
+    }
+    function failSource(currentAttempt) {
+      if (finished || currentAttempt !== attempt || _ttsAudio !== a || token !== _speakToken) return;
+      clearTimeout(fallbackTimer);
+      try { a.pause(); } catch(e) {}
+      tryNextSource();
+    }
     function done() {
       if (finished || token !== _speakToken) return;
       finished = true;
       clearTimeout(fallbackTimer);
       if (onDone) onDone();
     }
-    a.onplaying = function() { clearTimeout(fallbackTimer); };
-    a.onended = done;
-    a.onerror = fallback;
-    a.onstalled = fallback;
-    a.play().catch(fallback);
+    tryNextSource();
   } catch(e) {
     speakSyn(text, rate, onDone, token);
   }
