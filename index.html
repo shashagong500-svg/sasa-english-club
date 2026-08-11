@@ -177,6 +177,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans G
 .opt-chip{padding:8px 14px;border-radius:12px;border:1.5px solid var(--bd);font-size:13px;cursor:pointer;background:#fff}
 .opt-chip.sel{border-color:var(--pri);background:var(--pl);color:var(--pid)}
 .opt-chip:active{transform:scale(.95)}
+.edition-note{font-size:11px;color:var(--tl);margin-top:3px}
+.stage-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0 16px}
+.stage-step{min-height:44px;padding:7px 4px;border:1.5px solid var(--bd);border-radius:10px;background:#fff;color:var(--tl);font-size:11px;text-align:center;display:flex;align-items:center;justify-content:center}
+.stage-step.act{border-color:var(--pri);background:var(--pl);color:var(--pid);font-weight:600}
+.stage-step.done{border-color:var(--suc);background:#E8F8F0;color:#278B55}
+.wc-word-focus{text-align:center;padding:12px 8px}
+.wc-word-focus .word{font-size:30px;font-weight:700;color:var(--pri);overflow-wrap:anywhere}
+.wc-word-focus .phonetic{font-size:14px;color:var(--tl);margin-top:2px}
+.wc-example{padding:12px;border-radius:10px;background:var(--bg);margin:12px 0;text-align:center}
+.wc-example .en{font-size:14px;font-weight:500}
+.wc-example .zh{font-size:12px;color:var(--tl);margin-top:3px}
+.context-passage{padding:14px;border-radius:10px;background:var(--sl);font-size:15px;line-height:1.8;margin:10px 0}
+.context-passage .blank{display:inline-block;min-width:64px;padding:0 6px;border-bottom:2px solid var(--sec);color:var(--sec);font-weight:600;text-align:center}
+.ts-q .opts.long{grid-template-columns:1fr}
+.ts-q .opts.long .opt{text-align:left;padding:12px}
+.speaking-question{padding:16px;border-radius:12px;background:var(--sl);border-left:4px solid var(--sec);margin:12px 0}
+.speaking-question .q{font-size:18px;font-weight:600;line-height:1.5}
+.speaking-question .hint{font-size:13px;color:var(--tl);margin-top:8px}
+.answer-sample{padding:12px;border-radius:10px;background:#E8F8F0;color:#24744A;margin-top:10px}
+.recording-playback{width:100%;margin-top:10px;height:40px}
+.btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
 
 </style>
 <script src="https://beacon.cdn.qq.com/sdk/4.5.9/beacon_web.min.js"></script>
@@ -222,7 +243,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans G
 </div>
 </div>
 
-<script src="audio-neural/audio-map.js?v=ava-neural-20260810-v1"></script>
+<script src="audio-neural/audio-map.js?v=ava-neural-20260812-v2"></script>
 <script>
 // ===== Core State =====
 var S = {page: "home", grade: "3", tbView: null, unitDetail: null, wcState: null, ppState: null, hwUnit: null, testMod: null, gameState: null, recState: null};
@@ -237,6 +258,65 @@ var TB = {"3":[{"mid":0,"mt":"Welcome to school","ml":"三年级上册(2024新�
 function getGradeTB(g) { return TB2026[g] || TB[g] || []; }
 function findModule(g, mid) { var list = getGradeTB(g); for (var i = 0; i < list.length; i++) { if (list[i].mid == mid) return list[i]; } return null; }
 function findUnit(g, mid, uid) { var mod = findModule(g, mid); if (!mod || !mod.units) return null; for (var i = 0; i < mod.units.length; i++) { if (mod.units[i].uid == uid) return mod.units[i]; } return null; }
+
+var TEXTBOOK_EDITIONS = {
+  "3": "外研版三年级起点 · 2024版",
+  "4": "外研版三年级起点 · 2025版",
+  "5": "外研版三年级起点 · 2026版",
+  "6": "外研版三年级起点 · 2026版"
+};
+
+function editionName(g) {
+  return TEXTBOOK_EDITIONS[g] || "外研版三年级起点";
+}
+
+function editionModuleLabel(g, mod) {
+  var label = (mod && (mod.ml || mod.mt)) || "";
+  if (g === "4") label = label.replace(/2024新版/g, "2025新版");
+  return label;
+}
+
+function getPracticeUnitRef(g) {
+  var modules = getGradeTB(g);
+  if (!modules.length) return null;
+  var savedKeys = [DB.d.today && DB.d.today.tb, DB.d.settings && DB.d.settings.lastUnit];
+  for (var i = 0; i < savedKeys.length; i++) {
+    var saved = savedKeys[i];
+    if (!saved) continue;
+    var parts = String(saved).split("-");
+    if (parts[0] !== String(g) || parts.length < 3) continue;
+    var savedMod = findModule(g, parts[1]);
+    var savedUnit = findUnit(g, parts[1], parts[2]);
+    if (savedMod && savedUnit) return {grade: String(g), mid: savedMod.mid, uid: savedUnit.uid, mod: savedMod, unit: savedUnit};
+  }
+  for (var m = 0; m < modules.length; m++) {
+    if (modules[m].units && modules[m].units.length) {
+      return {grade: String(g), mid: modules[m].mid, uid: modules[m].units[0].uid, mod: modules[m], unit: modules[m].units[0]};
+    }
+  }
+  return null;
+}
+
+function startDailyWordChallenge() {
+  var ref = getPracticeUnitRef(S.grade);
+  if (!ref) { alert("当前年级暂无单词训练内容"); return; }
+  S.page = "tb";
+  startWordChallenge(ref.grade, ref.mid, ref.uid);
+}
+
+function startDailyPattern() {
+  var ref = getPracticeUnitRef(S.grade);
+  if (!ref) { alert("当前年级暂无句型训练内容"); return; }
+  S.page = "tb";
+  startPattern(ref.grade, ref.mid, ref.uid);
+}
+
+function startDailyTest() {
+  var ref = getPracticeUnitRef(S.grade);
+  if (!ref) { alert("当前年级暂无小测内容"); return; }
+  S.page = "tb";
+  startModuleTest(ref.mid, ref.uid);
+}
 function normalizeSentence(sent) {
   if (!sent) return {en: "", zh: "", key: false};
   if (Array.isArray(sent)) return {en: sent[0] || "", zh: sent[1] || "", key: !!sent[2]};
@@ -575,13 +655,13 @@ function stopAudioBtn(btn, text, cls) {
 
 function analyzeAudioBlob(blob, onDone) {
   var fallback = fallbackAudioScore();
-  if (!blob || !blob.size) { if (onDone) onDone(fallback); return; }
+  if (!blob || !blob.size) { if (onDone) onDone(fallback, null); return; }
   var reader = new FileReader();
   var finished = false;
   function done(score) {
     if (finished) return;
     finished = true;
-    if (onDone) onDone(score || fallback);
+    if (onDone) onDone(score || fallback, blob);
   }
   reader.onerror = function() { done(fallback); };
   reader.onload = function() {
@@ -716,7 +796,7 @@ function renderHome() {
   h += '<div class="card-t">🚀 快速开始</div>';
   h += '<div class="grid">';
   h += '<a class="qc" onclick="go(\'tb\')"><span class="e">📖</span><div class="tt">教材学习</div><div class="ds">课文点读·句型</div></a>';
-  h += '<a class="qc" onclick="go(\'train\')"><span class="e">🎮</span><div class="tt">训练闯关</div><div class="ds">单词·拼写·听力</div></a>';
+  h += '<a class="qc" onclick="startDailyWordChallenge()"><span class="e">🎯</span><div class="tt">单词闯关</div><div class="ds">跟读·词义·拼写</div></a>';
   h += '</div>';
   h += '</div>';
   // Weekly progress
@@ -737,10 +817,10 @@ function renderHome() {
 
 function renderTodayTasks() {
   var tasks = [
-    {ic: "🔊", tt: "课文听读", ds: "听读3遍", done: (DB.d.today.listenCount || 0) >= 3, pct: Math.min(100, ((DB.d.today.listenCount || 0) / 3) * 100)},
-    {ic: "📝", tt: "单词学习", ds: "学8个词", done: (DB.d.today.words.length) >= 8, pct: Math.min(100, (DB.d.today.words.length / 8) * 100)},
-    {ic: "🗣️", tt: "句型跟读", ds: "跟读5句", done: (DB.d.today.readCount || 0) >= 5, pct: Math.min(100, ((DB.d.today.readCount || 0) / 5) * 100)},
-    {ic: "✏️", tt: "每日小测", ds: "测1次", done: !!(DB.d.today.test), pct: DB.d.today.test ? 100 : 0}
+    {ic: "🔊", tt: "课文听读", ds: "听读3遍", action: "go('tb')", done: (DB.d.today.listenCount || 0) >= 3, pct: Math.min(100, ((DB.d.today.listenCount || 0) / 3) * 100)},
+    {ic: "📝", tt: "单词训练", ds: "跟读·词义·拼写", action: "startDailyWordChallenge()", done: (DB.d.today.words.length) >= 8, pct: Math.min(100, (DB.d.today.words.length / 8) * 100)},
+    {ic: "🗣️", tt: "口语回答", ds: "录音回答5题", action: "startDailyPattern()", done: (DB.d.today.readCount || 0) >= 5, pct: Math.min(100, ((DB.d.today.readCount || 0) / 5) * 100)},
+    {ic: "✏️", tt: "每日小测", ds: "词义·语境理解", action: "startDailyTest()", done: !!(DB.d.today.test), pct: DB.d.today.test ? 100 : 0}
   ];
   var doneCount = tasks.filter(function(t) { return t.done; }).length;
   var pct = Math.round((doneCount / tasks.length) * 100);
@@ -750,7 +830,7 @@ function renderTodayTasks() {
   }, 0);
   var h = "";
   tasks.forEach(function(t) {
-    h += '<div class="tt-card' + (t.done ? " done" : "") + '" onclick="go(\'tb\')">';
+    h += '<div class="tt-card' + (t.done ? " done" : "") + '" onclick="' + t.action + '">';
     h += '<div class="ic">' + t.ic + '</div>';
     h += '<div class="tt">' + t.tt + '</div>';
     h += '<div class="ds">' + t.ds + '</div>';
@@ -814,7 +894,7 @@ function renderTB() {
   // Module list
   tbData.forEach(function(mod) {
     h += '<div class="mod-card">';
-    var modLabel = mod.ml || mod.mt;
+    var modLabel = editionModuleLabel(g, mod);
     h += '<div class="mt">' + modLabel + '</div>';
     mod.units.forEach(function(u) {
       var key = upKey(g, mod.mid, u.uid);
@@ -839,7 +919,7 @@ function renderTB() {
   h += '<p style="font-size:13px;color:var(--tl);margin-bottom:10px">学完一个单元做一次小测</p>';
   h += '<select class="input" id="testModSel" style="margin-bottom:10px">';
   tbData.forEach(function(mod) {
-    var modLabel = mod.ml || mod.mt;
+    var modLabel = editionModuleLabel(g, mod);
     h += '<option value="' + mod.mid + '">' + modLabel + '</option>';
   });
   h += '</select>';
@@ -855,6 +935,7 @@ function openUnit(g, mid, uid) {
   var unit = findUnit(g, mid, uid);
   if (!unit) return;
   S.unitDetail = {grade: g, mid: mid, uid: uid, unit: unit, mod: mod};
+  DB.d.settings.lastUnit = upKey(g, mid, uid);
   markToday("tb", upKey(g, mid, uid));
   render();
 }
@@ -874,7 +955,7 @@ function renderUnitDetail() {
 
   // Unit title
   h += '<div class="card" style="background:linear-gradient(135deg,var(--pri),var(--pid));color:#fff">';
-  h += '<div style="font-size:13px;opacity:.8">' + (d.mod.ml || d.mod.mt) + '</div>';
+  h += '<div style="font-size:13px;opacity:.8">' + editionModuleLabel(d.grade, d.mod) + '</div>';
   h += '<div style="font-size:20px;font-weight:600;margin-top:4px">' + u.ut + '</div>';
   h += '<div style="font-size:12px;opacity:.8;margin-top:6px">听过' + up.listened + '次 · 读了' + up.read.length + '句 · 掌握' + up.mastered.length + '句</div>';
   h += '</div>';
@@ -906,7 +987,7 @@ function renderUnitDetail() {
     h += '<div class="pl">Key Pattern</div>';
     h += '<div class="pt">' + u.pat + '</div>';
     h += '</div>';
-    h += '<button class="btn btn-s btn-blk" onclick="startPattern(\'' + d.grade + '\',' + d.mid + ',' + d.uid + ')">🎯 句型操练</button>';
+    h += '<button class="btn btn-s btn-blk" onclick="startPattern(\'' + d.grade + '\',' + d.mid + ',' + d.uid + ')">🎤 录音回答问题</button>';
     h += '</div>';
   }
 
@@ -988,6 +1069,10 @@ function normWord(w, grade) {
       translation = example;
       example = syllables;
       syllables = "";
+    }
+    if (!syllables && w.e) {
+      var glossaryWord = findWord(w.e, grade);
+      if (glossaryWord && glossaryWord.s && !/[.!?,;:]/.test(glossaryWord.s)) syllables = glossaryWord.s;
     }
     return {e: w.e || "", c: w.c || "", p: w.p || "", s: syllables, x: example, xc: translation};
   }
@@ -1522,7 +1607,7 @@ function renderHW() {
   var reqTasks = [
     {ic: "🔊", tt: "听读课文3遍", ds: "课文原文跟读", action: "S.hwUnit=null;S.unitDetail={grade:'" + hw.grade + "',mid:" + hw.mid + ",uid:" + hw.uid + ",unit:findUnit('" + hw.grade + "'," + hw.mid + "," + hw.uid + "),mod:findModule('" + hw.grade + "'," + hw.mid + ")};render()", done: hwp.required.indexOf(0) >= 0},
     {ic: "📝", tt: "单词闯关", ds: "完成本课单词练习", action: "S.hwUnit=null;startWordChallenge('" + hw.grade + "'," + hw.mid + "," + hw.uid + ")", done: hwp.required.indexOf(1) >= 0},
-    {ic: "🗣️", tt: "句型跟读", ds: "完成句型操练", action: "S.hwUnit=null;startPattern('" + hw.grade + "'," + hw.mid + "," + hw.uid + ")", done: hwp.required.indexOf(2) >= 0}
+    {ic: "🗣️", tt: "口语回答", ds: "根据问题录音作答", action: "S.hwUnit=null;startPattern('" + hw.grade + "'," + hw.mid + "," + hw.uid + ")", done: hwp.required.indexOf(2) >= 0}
   ];
   reqTasks.forEach(function(t, i) {
     h += '<div class="hw-item' + (t.done ? " done" : "") + '">';
@@ -1883,9 +1968,9 @@ function generateReviewPlan() {
     plan.push({task: "继续学课文", detail: "听读并录音跟读"});
   }
   // Practice patterns
-  plan.push({task: "句型操练", detail: "5句替换练习"});
+  plan.push({task: "口语回答", detail: "录音回答5题"});
   // Daily mini-test
-  plan.push({task: "每日小测", detail: "1次单元测"});
+  plan.push({task: "每日小测", detail: "词义与语境理解"});
   return plan;
 }
 
@@ -1905,9 +1990,9 @@ function renderTrain() {
   var h = "";
   h += '<div class="card">';
   h += '<div class="card-t">🎮 训练闯关</div>';
-  h += '<p style="font-size:13px;color:var(--tl);margin-bottom:14px">选择训练模式，提升英语能力</p>';
+  h += '<p style="font-size:13px;color:var(--tl);margin-bottom:14px">训练内容与当前年级教材同步</p>';
   h += '<div class="grid">';
-  h += '<a class="qc" onclick="startCardGame()"><span class="e">🎴</span><div class="tt">单词卡片</div><div class="ds">翻牌记忆</div></a>';
+  h += '<a class="qc" onclick="startDailyWordChallenge()"><span class="e">🎯</span><div class="tt">单词闯关</div><div class="ds">跟读·词义·拼写</div></a>';
   h += '<a class="qc" onclick="startSpellGame()"><span class="e">✏️</span><div class="tt">拼写训练</div><div class="ds">听音拼写</div></a>';
   h += '<a class="qc" onclick="startListenGame()"><span class="e">👂</span><div class="tt">听力填词</div><div class="ds">听音写单词</div></a>';
   h += '<a class="qc" onclick="startGrammarGame()"><span class="e">📐</span><div class="tt">语法练习</div><div class="ds">语法小题</div></a>';
@@ -2570,5 +2655,6 @@ function resetData() {
 }
 
 </script>
+<script src="training-v2.js?v=20260812-v1"></script>
 </body>
 </html>
