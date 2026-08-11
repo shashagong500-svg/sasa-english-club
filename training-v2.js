@@ -450,7 +450,7 @@ function renderModuleTest() {
   h += '</div><div class="ts-q"><div class="qt">' + q.label + ' · ' + (st.idx + 1) + '/' + st.questions.length + '</div><div class="edition-note">' + editionName(st.grade) + '</div>';
   h += '<div class="qc">' + q.title + '</div>';
   if (q.passage) {
-    var passageHtml = q.passage.split("[[BLANK]]").join('<span class="blank">?</span>');
+    var passageHtml = q.passage.split("[[BLANK]]").join('<span class="blank">____</span>');
     h += '<div class="context-passage">' + passageHtml + '</div>';
   }
   if (q.audioParts && q.audioParts.length) h += '<div style="text-align:center;margin:8px 0"><button class="btn btn-s compact-btn" onclick="testPlayAudio()">🔊 ' + (q.type === "vocab" ? "听单词" : "听语境") + '</button></div>';
