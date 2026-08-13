@@ -329,8 +329,8 @@ TB['5'] = TB2026['5'];
 TB['6'] = TB2026['6'];
 
 // Keep course audio easy to follow and preserve pitch while slowing it down.
-var DEFAULT_VOICE_RATE = 0.8;
-var VOICE_RATE_VERSION = 3;
+var DEFAULT_VOICE_RATE = 0.65;
+var VOICE_RATE_VERSION = 4;
 
 function currentVoiceRate() {
   var configured = DB && DB.d && DB.d.settings && Number(DB.d.settings.voiceRate);
@@ -2553,7 +2553,7 @@ function renderMore() {
   h += '<div class="card-t">⚙️ 设置</div>';
   h += '<div class="rp-item"><span>语速</span></div>';
   h += '<div style="display:flex;gap:8px;margin:8px 0">';
-  var rates = [{v: 0.65, l: "慢"}, {v: DEFAULT_VOICE_RATE, l: "正常"}, {v: 0.95, l: "快"}];
+  var rates = [{v: 0.5, l: "慢"}, {v: DEFAULT_VOICE_RATE, l: "正常"}, {v: 0.8, l: "快"}];
   rates.forEach(function(r) {
     var cur = currentVoiceRate();
     h += '<button class="opt-chip' + (Math.abs(cur - r.v) < 0.01 ? " sel" : "") + '" onclick="setRate(' + r.v + ')">' + r.l + '</button>';
@@ -2668,6 +2668,6 @@ function resetData() {
 }
 
 </script>
-<script src="training-v2.js?v=20260813-rate08"></script>
+<script src="training-v2.js?v=20260813-rate065"></script>
 </body>
 </html>
