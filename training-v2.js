@@ -92,13 +92,13 @@ function renderWordChallenge() {
 
   if (st.stage === 0) {
     h += '<div class="wc-word-focus"><div class="word">' + word.e + '</div><div class="phonetic">/' + word.p + '/</div>' + renderSyllables(word) + '</div>';
-    h += '<button class="btn btn-s btn-blk" onclick="speak(\'' + v2Js(word.e) + '\',0.85)">🔊 听标准发音</button>';
+    h += '<button class="btn btn-s btn-blk" onclick="speak(\'' + v2Js(word.e) + '\',currentVoiceRate())">🔊 听标准发音</button>';
     if (word.x) h += '<div class="wc-example"><div class="en">' + word.x + '</div><div class="zh">' + (word.xc || "") + '</div></div>';
     h += '<button class="btn btn-p btn-blk" style="margin-top:10px" id="wcRecBtn" onclick="wcRec()">🎤 录音跟读</button>';
     h += '<div id="wcAns"></div>';
   } else if (st.stage === 1) {
     h += '<div class="wc-word-focus"><div class="word">' + word.e + '</div><div class="phonetic">/' + word.p + '/</div></div>';
-    h += '<div style="text-align:center;margin-bottom:10px"><button class="btn btn-s compact-btn" onclick="speak(\'' + v2Js(word.e) + '\',0.85)">🔊 再听一次</button></div>';
+    h += '<div style="text-align:center;margin-bottom:10px"><button class="btn btn-s compact-btn" onclick="speak(\'' + v2Js(word.e) + '\',currentVoiceRate())">🔊 再听一次</button></div>';
     h += '<div class="wc-q">请选择正确的中文意思</div><div class="wc-opts" id="wcOpts">';
     var meanings = v2UniqueOptions(word.c, v2AllTextbookWords(st.grade).map(function(item) { return item.c; }), 4);
     meanings.forEach(function(option) { h += '<div class="wc-opt" onclick="wcMeaningAnswer(this,\'' + v2Js(option) + '\')">' + option + '</div>'; });
@@ -109,7 +109,7 @@ function renderWordChallenge() {
     h += '<div class="wc-word-focus"><div class="phonetic">/' + word.p + '/</div></div>';
     h += '<div class="wc-q" style="margin-bottom:8px">' + form.prompt + '</div>';
     h += '<div style="text-align:center;font-size:22px;font-weight:700;color:var(--pri);margin:12px 0;overflow-wrap:anywhere">' + form.display + '</div>';
-    h += '<div style="text-align:center;margin-bottom:10px"><button class="btn btn-s compact-btn" onclick="speak(\'' + v2Js(word.e) + '\',0.85)">🔊 听发音</button></div>';
+    h += '<div style="text-align:center;margin-bottom:10px"><button class="btn btn-s compact-btn" onclick="speak(\'' + v2Js(word.e) + '\',currentVoiceRate())">🔊 听发音</button></div>';
     h += '<input class="input" id="wcFormInput" placeholder="请输入答案" autocomplete="off" autocapitalize="none" onkeydown="if(event.key===\'Enter\')wcSubmitForm()">';
     h += '<button class="btn btn-p btn-blk" style="margin-top:10px" onclick="wcSubmitForm()">提交答案</button><div id="wcAns"></div>';
   }
@@ -326,7 +326,7 @@ function renderPattern() {
 
 function ppPlayQuestion() {
   var st = S.ppState;
-  if (st && st.questions[st.idx]) speak(st.questions[st.idx].question, 0.9);
+  if (st && st.questions[st.idx]) speak(st.questions[st.idx].question, currentVoiceRate());
 }
 
 function ppRec() {
@@ -349,7 +349,7 @@ function ppRec() {
     var ans = document.getElementById("ppAns");
     if (!ans) return;
     var playback = st.recordingUrl ? '<audio class="recording-playback" controls playsinline src="' + st.recordingUrl + '"></audio>' : "";
-    ans.innerHTML = '<div class="ans ' + (score.total >= 60 ? "ok" : "no") + '">回答已录制 · 声音质量 ' + score.total + '分</div>' + playback + '<div class="answer-sample"><div style="font-size:12px">参考回答</div><div style="font-weight:600;margin-top:3px">' + item.answer + '</div><button class="btn btn-l compact-btn" style="margin-top:8px" onclick="speak(\'' + v2Js(item.answer) + '\',0.9)">🔊 听参考回答</button></div><button class="btn btn-g btn-blk" style="margin-top:10px" onclick="ppNext()">' + (activeIndex + 1 >= st.questions.length ? "查看口语结果" : "下一题 →") + '</button>';
+    ans.innerHTML = '<div class="ans ' + (score.total >= 60 ? "ok" : "no") + '">回答已录制 · 声音质量 ' + score.total + '分</div>' + playback + '<div class="answer-sample"><div style="font-size:12px">参考回答</div><div style="font-weight:600;margin-top:3px">' + item.answer + '</div><button class="btn btn-l compact-btn" style="margin-top:8px" onclick="speak(\'' + v2Js(item.answer) + '\',currentVoiceRate())">🔊 听参考回答</button></div><button class="btn btn-g btn-blk" style="margin-top:10px" onclick="ppNext()">' + (activeIndex + 1 >= st.questions.length ? "查看口语结果" : "下一题 →") + '</button>';
   });
   if (recording) { btn.textContent = "⏹ 结束回答"; btn.className = "btn btn-dan btn-blk"; }
 }
@@ -489,7 +489,7 @@ function testPlayAudio() {
   stopSpeak();
   function next() {
     if (token !== _testAudioToken || index >= parts.length) return;
-    speakYd(parts[index++], 0.9, function() { if (token === _testAudioToken) setTimeout(next, 350); });
+    speakYd(parts[index++], currentVoiceRate(), function() { if (token === _testAudioToken) setTimeout(next, 350); });
   }
   next();
 }
